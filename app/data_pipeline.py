@@ -37,29 +37,28 @@ def _clean_dataframe(df: pd.DataFrame, symbol: str) -> pd.DataFrame:
 
     df["symbol"] = symbol.split(".")[0]
 
-    # Type cleanup.
+   
     df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.date
     numeric_cols = ["open", "high", "low", "close", "volume"]
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Handle missing values by interpolation then edge fill.
     df[numeric_cols] = df[numeric_cols].interpolate(method="linear", limit_direction="both")
     df[numeric_cols] = df[numeric_cols].ffill().bfill()
 
     df = df.dropna(subset=["date", "open", "close"]).sort_values("date")
 
-    # Required assignment metrics.
+   
     df["daily_return"] = np.where(df["open"] != 0, (df["close"] - df["open"]) / df["open"], 0.0)
     df["ma_7"] = df["close"].rolling(window=7, min_periods=1).mean()
     df["high_52w"] = df["high"].rolling(window=252, min_periods=1).max()
     df["low_52w"] = df["low"].rolling(window=252, min_periods=1).min()
 
-    # Custom metric: annualized 14-day volatility score.
+   
     daily_pct = df["close"].pct_change().fillna(0)
     df["volatility_score"] = daily_pct.rolling(window=14, min_periods=2).std().fillna(0) * np.sqrt(252)
 
-    # Custom metric: mock sentiment index derived from return momentum and bounded to 0..100.
+   
     momentum = df["close"].pct_change(periods=5).fillna(0)
     df["sentiment_index"] = (50 + momentum * 500).clip(lower=0, upper=100)
 
