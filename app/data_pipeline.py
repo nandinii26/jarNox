@@ -209,6 +209,25 @@ def refresh_data(symbols: list[str] | None = None) -> dict:
     return {"rows_upserted": inserted, "sources": sources, "symbols": [s.split(".")[0] for s in symbols]}
 
 
+def ensure_seed_data(symbols: list[str] | None = None) -> dict:
+    latest = latest_data_date()
+    if latest is not None:
+        return {"rows_upserted": 0, "sources": {}, "status": "already_seeded"}
+
+    initialize_database()
+    symbols = symbols or DEFAULT_SYMBOLS
+    upsert_company_metadata(symbols)
+
+    inserted = 0
+    sources = {}
+    for yf_symbol in symbols:
+        df = _build_mock_data(yf_symbol)
+        inserted += upsert_stock_data(df)
+        sources[yf_symbol.split(".")[0]] = "mock"
+
+    return {"rows_upserted": inserted, "sources": sources, "symbols": [s.split(".")[0] for s in symbols], "status": "seeded"}
+
+
 def latest_data_date() -> datetime.date | None:
     with get_connection() as conn:
         row = conn.execute("SELECT MAX(date) AS max_date FROM stock_data").fetchone()

@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .database import get_connection, initialize_database
-from .data_pipeline import ensure_fresh_data, refresh_data
+from .data_pipeline import ensure_seed_data, refresh_data
 from .schemas import CompanyOut, CompareOut, StockDataPoint, SummaryOut
 
 app = FastAPI(
@@ -33,7 +33,11 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 @app.on_event("startup")
 def startup_event() -> None:
     initialize_database()
-    ensure_fresh_data()
+    ensure_seed_data()
+
+
+def _ensure_seeded() -> None:
+    ensure_seed_data()
 
 
 @app.get("/")
@@ -53,6 +57,7 @@ def refresh() -> dict:
 
 @app.get("/companies", response_model=list[CompanyOut])
 def companies() -> list[CompanyOut]:
+    _ensure_seeded()
     with get_connection() as conn:
         rows = conn.execute("SELECT symbol, name FROM companies ORDER BY symbol").fetchall()
     return [CompanyOut(symbol=r["symbol"], name=r["name"]) for r in rows]
@@ -60,6 +65,7 @@ def companies() -> list[CompanyOut]:
 
 @app.get("/data/{symbol}", response_model=list[StockDataPoint])
 def stock_data(symbol: str, days: int = Query(30, ge=1, le=365)) -> list[StockDataPoint]:
+    _ensure_seeded()
     with get_connection() as conn:
         rows = conn.execute(
             """
@@ -87,6 +93,7 @@ def stock_data(symbol: str, days: int = Query(30, ge=1, le=365)) -> list[StockDa
 @app.get("/summary/{symbol}", response_model=SummaryOut)
 def summary(symbol: str) -> SummaryOut:
     symbol = symbol.upper()
+    _ensure_seeded()
     with get_connection() as conn:
         summary_row = conn.execute(
             """
@@ -133,6 +140,7 @@ def compare(
 ) -> CompareOut:
     s1 = symbol1.upper()
     s2 = symbol2.upper()
+    _ensure_seeded()
 
     query = """
         SELECT date, close

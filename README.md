@@ -64,4 +64,5 @@ Open:
 ## Notes
 
 - By default, symbols include: `INFY`, `TCS`, `RELIANCE`, `HDFCBANK`, `ICICIBANK`.
-- If internet/API access is blocked, mock data is generated so the platform still works.
+- Startup uses seeded mock data first so the app can boot reliably in serverless deployments.
+- The `POST /refresh` endpoint still attempts live `yfinance` fetches and falls back to mock data if the network is blocked or rate-limited.
