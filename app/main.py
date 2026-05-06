@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .database import get_connection, initialize_database
-from .data_pipeline import ensure_seed_data, refresh_data
+from .data_pipeline import ensure_seed_data, ensure_fresh_data, refresh_data
 from .schemas import CompanyOut, CompareOut, StockDataPoint, SummaryOut
 
 app = FastAPI(
@@ -33,7 +33,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 @app.on_event("startup")
 def startup_event() -> None:
     initialize_database()
-    ensure_seed_data()
+    ensure_fresh_data()
 
 
 def _ensure_seeded() -> None:
